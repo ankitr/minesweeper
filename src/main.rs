@@ -148,10 +148,6 @@ impl Board {
         }
     }
 
-    fn get_square_at_position(&self, position: &Position) -> SquareState {
-        self.squares[self.index_from_position(position)]
-    }
-
     fn surrounding_bombs_from_index(&self, index: usize) -> usize {
         self.surrounding_squares_indexes(index)
             .iter()
@@ -299,7 +295,14 @@ impl Game {
         })
     }
 
-    fn make_move(&mut self) -> Result<(), GameError> {
+    fn check_won(&self) -> bool {
+        self.board
+            .squares
+            .iter()
+            .all(|square_state| !matches!(square_state, SquareState::Uncovered))
+    }
+
+    fn make_move_io(&mut self) -> Result<(), GameError> {
         let target_position = self.get_move_input()?;
         if !self.board.contains(&target_position) {
             return Err(GameError::InvalidMoveError);
@@ -307,6 +310,7 @@ impl Game {
 
         let move_square_index = self.board.index_from_position(&target_position);
         let move_square_state = self.board.squares[move_square_index];
+        self.move_count += 1;
         match move_square_state {
             SquareState::Bomb => {
                 println!("you died");
@@ -316,7 +320,12 @@ impl Game {
             SquareState::Covered => {
                 self.board.squares[move_square_index] = SquareState::Uncovered;
                 self.clear_safe_squares();
-                self.make_move()
+                if self.check_won() {
+                    println!("you won");
+                    Ok(())
+                } else {
+                    self.make_move_io()
+                }
             }
         }
     }
@@ -324,5 +333,5 @@ impl Game {
 
 fn main() {
     let mut game = Game::start(10, 10, 10, Position { x: 5, y: 5 }).unwrap();
-    game.make_move();
+    game.make_move_io().unwrap();
 }
